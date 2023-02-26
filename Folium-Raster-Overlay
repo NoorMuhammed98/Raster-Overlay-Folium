@@ -1,0 +1,50 @@
+from osgeo import gdal
+import rasterio
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import numpy.ma as ma
+import folium
+
+infile  = r"C:\Users\AIRNEX\Desktop\Raster_Overlay_Folium\RGB_prj_Clipped.tif"
+da_dem  = xr.open_rasterio(infile).drop('band')[0].rename({'x':'longitude', 'y':'latitude'})
+nodata  = da_dem.nodatavals[0]
+# da_dem  = da_dem.where(da_dem>nodata, np.nan)
+arr_dem = da_dem.values
+
+#Calucate center and bounds
+
+clat = da_dem.latitude.values.mean()
+clon = da_dem.longitude.values.mean()
+
+mlat = da_dem.latitude.values.min()
+mlon = da_dem.longitude.values.min()
+
+xlat = da_dem.latitude.values.max()
+xlon = da_dem.longitude.values.max()
+# print(clat, clon, mlat, mlon, xlat, xlon)
+
+# #Map values to colors
+# def colorize(array, cmap='viridis'):
+#     normed_data = (array - array.min()) / (array.max() - array.min())
+#     cm = plt.cm.get_cmap(cmap)
+#     return cm(normed_data)
+# #
+# data = ma.masked_invalid(arr_dem)
+# colored_data = colorize(data, cmap='viridis_r')
+
+mapa = folium.Map(location=[clat, clon],tiles="Stamen Terrain",zoom_start=12)
+
+tile = folium.TileLayer(
+        tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attr = 'Esri',
+        name = 'Esri Satellite',
+        overlay = False,
+        control = True
+       ).add_to(mapa)
+
+folium.raster_layers.ImageOverlay(arr_dem,[[mlat, mlon], [xlat, xlon]],opacity=1,name= "RGB Sentinel-2").add_to(mapa)
+
+folium.LayerControl().add_to(mapa)
+
+mapa.save('Test2.html')
